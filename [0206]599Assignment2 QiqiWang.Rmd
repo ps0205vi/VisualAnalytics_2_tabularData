@@ -1,0 +1,185 @@
+---
+output:
+  html_document: default
+  pdf_document: default
+---
+```{r}
+link='https://github.com/EvansDataScience/VisualAnalytics_2_tabularData/raw/master/data/eduwa.rda'
+load(file=url(link))
+```
+
+```{r}
+absoluteT=table(eduwa$LocaleType,exclude = 'nothing')
+ToPlot=prop.table(absoluteT)
+names(ToPlot)[5]='Unknown'
+ToPlot=ToPlot*100
+ToPlot
+```
+
+```{r}
+tableFreq=as.data.frame(ToPlot)
+names(tableFreq)=c("locale","pct")
+tableFreq
+```
+
+```{r}
+titleText1='Exercise 1: Where are Public Schools located in WA in 2019?'
+sourceText='Source: US Department of Education'
+```
+
+```{r}
+library(ggplot2)
+base= ggplot(data = tableFreq, 
+             aes(x = reorder(locale,-pct),
+                 y = pct)) 
+
+plot1 = base + geom_bar(fill ="gray",
+                        stat = 'identity')
+
+plot2 = plot1 + labs(title=titleText1,
+                     x =NULL, 
+                     y = NULL,
+                     caption = sourceText)
+
+plot3 = plot2 + geom_hline(yintercept = 25, 
+                           linetype="dashed", 
+                           size=1.5, 
+                           alpha=0.5) 
+library(scales)
+
+plot4 = plot3 + scale_y_continuous(breaks=c(0,10, 25,40,50),
+                                 limits = c(0, 50),
+                                 labels=scales::unit_format(suffix = '%')) 
+plot5 = plot4 + theme(panel.background = element_rect(fill = "white",
+                                                    colour = "grey50"),
+                    plot.caption = element_text(hjust = 0),
+                    plot.title = element_text(hjust = 0.5))
+
+plot6 = plot5 + geom_text(aes(y = pct ,
+                            label = paste0(round(pct,2), '%')),
+                        vjust= 1,
+                        size = 3)
+
+plot6
+```
+
+```{r}
+titleText2='Exercise 2: Are all locations getting a fair share of public schools in WA?'
+tableFreqO=tableFreq[order(-tableFreq$pct),]
+tableFreqO$gap=tableFreqO$pct-25
+tableFreqO$PositiveGap=ifelse(tableFreqO$gap>0,T,F)
+
+base = ggplot(tableFreqO, aes(locale,gap,color=PositiveGap,
+                              label = round(gap,3)))
+lolliplot1=base + geom_segment(aes(y = 0, 
+                                   x = locale, 
+                                   yend = gap, 
+                                   xend = locale), color = "gray") 
+lolliplot2=lolliplot1 + geom_point() 
+lolliplot3= lolliplot2 + scale_x_discrete(limits=tableFreqO$locale) 
+lolliplot3 + geom_text(nudge_x=0.3,show.legend = FALSE) + labs(title=titleText2,
+                     x =NULL, 
+                     y = NULL,
+                     caption = sourceText)
+```
+
+```{r}
+frqTabO=as.data.frame(prop.table(table(eduwa$High.Grade)))
+names(frqTabO)=c('grade','pct')
+base = ggplot(frqTabO,aes(x=grade,y=pct)) + geom_bar(stat = 'identity') 
+
+box1 = ggplot(eduwa, aes(y=as.numeric(High.Grade))) 
+box1 = box1 + geom_boxplot() + coord_flip()
+
+ordLabels= levels(eduwa$High.Grade)
+box2 = box1 + scale_y_continuous(labels=ordLabels,breaks=1:15)
+
+titleText3 = "Exercise 3: Grade offered in WA schools"
+box2 + labs(title=titleText3,
+            x =NULL, 
+            y = NULL,
+            caption = sourceText) + theme(panel.background = element_rect(fill = "white",colour="grey40"),
+                                          plot.caption = element_text(hjust = 0),
+                                          plot.title = element_text(hjust = 0.5))
+```
+
+```{r}
+titleText4="Exercise 4: How many kids are there in each school \n that have that lunch for free"
+eduwa18=eduwa[complete.cases(eduwa$Free.Lunch),]
+
+base= ggplot(eduwa18,aes(x = Free.Lunch))  
+h1= base + geom_histogram(binwidth = 100,boundary=0)
+h1= h1 + stat_bin(binwidth = 100, aes(label=..count..), 
+                  geom = "text",boundary = 0,vjust=-0.5, cex=3)
+h1 = h1 + labs(title=titleText4,
+               caption=sourceText)
+h1 = h1 + theme(panel.background = element_rect(fill = "white",colour = "grey40"),
+                    plot.caption = element_text(hjust = 0),
+                    plot.title = element_text(hjust = 0.5))
+
+library(scales)
+h1 + scale_y_continuous(breaks=c(0,300,600,900),
+                        limits = c(0, 900), 
+                        labels=scales::unit_format(suffix = '')) + scale_x_continuous(breaks=c(0,200,400,600,800,1000,1200,1400,1600,1800),
+                        limits = c(0, 1800), 
+                        labels=scales::unit_format(suffix = ''))
+```
+
+```{r}
+dataHist=hist(eduwa18$Free.Lunch)
+```
+
+```{r}
+hist(eduwa18$Free.Lunch,labels = T,xlab="Free Lunch", xaxt="n", 
+     main = titleText4, sub=sourceText, ylim=c(0,1000)) 
+axis(side=1, at=dataHist$breaks)
+```
+
+```{r}
+eduwa4=eduwa[complete.cases(eduwa$Student.Teacher.Ratio),]
+meanValues=tapply(eduwa4$Student.Teacher.Ratio, eduwa4$County, mean)
+tableMain=as.data.frame(meanValues)
+
+base= ggplot(tableMain, aes(x=tableMain$meanValues))  
+histogram1= base + geom_histogram(binwidth = 2,boundary=0)
+
+titleText5_1="Exercise 5_1: Average student-teacher ratio in WA schools"
+
+histogram1 = histogram1 + labs(title=titleText5_1, x = "Student-teacher ratio", caption=sourceText)
+histogram1 = histogram1 + stat_bin(binwidth = 2, aes(label=..count..), 
+                  geom = "text",boundary = 0,vjust=-0.5, cex=3)
+
+histogram1 = histogram1 + theme(panel.background = element_rect(fill = "white",
+                                                                colour = "grey40"),
+                    plot.caption = element_text(hjust = 0),
+                    plot.title = element_text(hjust = 0.5))
+histogram1 + scale_x_continuous(breaks=c(10,12,14,16,18,20,22,24),
+                        limits = c(10, 24), 
+                        labels=scales::unit_format(suffix = '')) + geom_vline(xintercept =mean(meanValues), 
+                           linetype="dashed", 
+                           size=1.5,
+                           alpha=0.5)
+```
+
+```{r}
+titleText5_2 = "Exercise 5_2: Average student-teacher ratio in WA schools \n red line: mean value \n green line: median value"
+den2 = base + geom_density(binwidth = 2,boundary=0) + labs(title=titleText5_2, x = "Student-teacher ratio", caption=sourceText)
+
+den2 = den2 + theme(panel.background = element_rect(fill = "white", colour = "grey40"),
+                    plot.caption = element_text(hjust = 0),
+                    plot.title = element_text(hjust = 0.5))
+den2 = den2 + geom_vline(xintercept =mean(meanValues), 
+                           linetype="dashed", 
+                           size=1.5,
+                           alpha=0.5, col="red")
+den2 = den2 + geom_vline(xintercept =median(meanValues),
+                           linetype="dashed", 
+                           size=1.5,
+                           alpha=0.5, col="green")
+
+den2 = den2 + scale_x_continuous(breaks=c(10,12,14,16,18,20,22,24),
+                        limits = c(10, 24), 
+                        labels=scales::unit_format(suffix = ''))
+
+den2
+```
